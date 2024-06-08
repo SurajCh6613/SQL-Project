@@ -1,4 +1,4 @@
-1. 
+--1. Create the Employee_Hierarchy table:
 CREATE TABLE Employee_Hierarchy (
     EMPLOYEEID VARCHAR(20),
     REPORTINGTO NVARCHAR(MAX),
@@ -8,7 +8,7 @@ CREATE TABLE Employee_Hierarchy (
     LASTNAME NVARCHAR(MAX)
 );
 
-
+--2. Create the stored procedure SP_hierarchy:
 CREATE PROCEDURE SP_hierarchy
 AS
 BEGIN
