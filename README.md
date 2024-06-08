@@ -1,2 +1,3 @@
 # SQL-Project
-Celebal Technologies Summer Internship SQL Projects
+# Celebal Technologies Summer Internship SQL Projects
+
