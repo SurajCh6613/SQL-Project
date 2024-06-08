@@ -1,67 +1,53 @@
-CREATE TABLE employee_attendance (
-    EmpID INT,
-    Name VARCHAR(50),
-    CheckInOutTime DATETIME,
-    Attendance CHAR(3)
+1. 
+CREATE TABLE Employee_Hierarchy (
+    EMPLOYEEID VARCHAR(20),
+    REPORTINGTO NVARCHAR(MAX),
+    EMAILID NVARCHAR(MAX),
+    LEVEL INT,
+    FIRSTNAME NVARCHAR(MAX),
+    LASTNAME NVARCHAR(MAX)
 );
 
-INSERT INTO employee_attendance (EmpID, Name, CheckInOutTime, Attendance)
-VALUES
-    (1, 'Him', '2024-01-03 10:08', 'IN'),
-    (2, 'Raj', '2024-01-03 10:10', 'IN'),
-    (3, 'Anu', '2024-01-03 10:12', 'IN'),
-    (1, 'Him', '2024-01-03 11:11', 'OUT'),
-    (2, 'Raj', '2024-01-03 12:12', 'OUT'),
-    (3, 'Anu', '2024-01-03 12:35', 'OUT'),
-    (1, 'Him', '2024-01-03 12:08', 'IN'),
-    (2, 'Raj', '2024-01-03 12:25', 'IN'),
-    (3, 'Anu', '2024-01-03 12:40', 'IN'),
-    (1, 'Him', '2024-01-03 14:12', 'OUT'),
-    (2, 'Raj', '2024-01-03 15:12', 'OUT'),
-    (3, 'Anu', '2024-01-03 18:35', 'OUT'),
-    (1, 'Him', '2024-01-03 15:08', 'IN'),
-    (1, 'Him', '2024-01-03 18:08', 'OUT');
 
-WITH EmployeeAttendance AS (
+CREATE PROCEDURE SP_hierarchy
+AS
+BEGIN
+    TRUNCATE TABLE Employee_Hierarchy;
+
+    WITH EmployeeCTE AS (
+        SELECT 
+            EmployeeID,
+            ReportingTo,
+            EmailID,
+            1 AS Level
+        FROM 
+            EMPLOYEE_MASTER
+        WHERE 
+            ReportingTo IS NULL
+
+        UNION ALL
+        SELECT 
+            em.EmployeeID,
+            em.ReportingTo,
+            em.EmailID,
+            cte.Level + 1 AS Level
+        FROM 
+            EMPLOYEE_MASTER em
+        INNER JOIN 
+            EmployeeCTE cte
+        ON 
+            em.ReportingTo = cte.EmployeeID
+    )
+
+    INSERT INTO Employee_Hierarchy (EMPLOYEEID, REPORTINGTO, EMAILID, LEVEL, FIRSTNAME, LASTNAME)
     SELECT 
-        EmpID,
-        Name,
-        CheckInOutTime,
-        Attendance,
-        ROW_NUMBER() OVER (PARTITION BY EmpID ORDER BY CheckInOutTime) AS RowNum
-    FROM employee_attendance
-),
-
-EmployeeLogTimes AS (
-    SELECT
-        e1.EmpID,
-        e1.Name,
-        e1.CheckInOutTime AS CheckInTime,
-        e2.CheckInOutTime AS CheckOutTime
-    FROM EmployeeAttendance e1
-    LEFT JOIN EmployeeAttendance e2
-    ON e1.EmpID = e2.EmpID AND e1.RowNum = e2.RowNum - 1
-    WHERE e1.Attendance = 'IN' AND e2.Attendance = 'OUT'
-),
-
-EmployeeWorkHours AS (
-    SELECT
-        EmpID,
-        Name,
-        MIN(CheckInTime) AS FirstCheckInTime,
-        MAX(CheckOutTime) AS LastCheckOutTime,
-        COUNT(CheckOutTime) AS TotalOutCount,
-        SUM(DATEDIFF(MINUTE, CheckInTime, CheckOutTime)) AS TotalWorkMinutes
-    FROM EmployeeLogTimes
-    GROUP BY EmpID, Name
-)
-
-SELECT
-    EmpID,
-    Name,
-    FirstCheckInTime,
-    LastCheckOutTime,
-    TotalOutCount,
-    CONCAT(FLOOR(TotalWorkMinutes / 60), ':', RIGHT('0' + CAST(TotalWorkMinutes % 60 AS VARCHAR), 2)) AS TotalWorkHours
-FROM EmployeeWorkHours;
-
+        EmployeeID,
+        ReportingTo,
+        EmailID,
+        Level,
+        LEFT(EmailID, CHARINDEX('@', EmailID) - 1) AS FirstName,
+        RIGHT(LEFT(EmailID, CHARINDEX('.', EmailID, CHARINDEX('@', EmailID)) - 1), 
+              LEN(LEFT(EmailID, CHARINDEX('.', EmailID, CHARINDEX('@', EmailID)) - 1)) - CHARINDEX('@', EmailID)) AS LastName
+    FROM 
+        EmployeeCTE;
+END;
